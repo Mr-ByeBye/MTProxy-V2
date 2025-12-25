@@ -202,6 +202,10 @@ validate_username(){
 	echo "${username}" | grep -Eq '^[a-zA-Z0-9_-]+$'
 }
 
+is_default_user(){
+	[ "$1" = "default" ]
+}
+
 get_used_ports(){
 	for cfg in "${CONFIG_PATH}" "${USER_CONFIG_DIR}"/*.toml; do
 		[ -f "${cfg}" ] || continue
@@ -220,11 +224,19 @@ get_next_port(){
 }
 
 user_service_name(){
-	echo "mtg-user@${username}"
+	if is_default_user "${username}"; then
+		echo "mtg"
+	else
+		echo "mtg-user@${username}"
+	fi
 }
 
 user_config_path(){
-	echo "${USER_CONFIG_DIR}/${username}.toml"
+	if is_default_user "${username}"; then
+		echo "${CONFIG_PATH}"
+	else
+		echo "${USER_CONFIG_DIR}/${username}.toml"
+	fi
 }
 
 create_user(){
@@ -234,6 +246,10 @@ create_user(){
 	read -p "输入用户名(仅字母数字_-): " username
 	if ! validate_username "${username}"; then
 		echo -e "${red}用户名不合法，仅支持字母数字下划线与短横线${plain}"
+		return 1
+	fi
+	if is_default_user "${username}"; then
+		echo -e "${red}用户名 default 为主实例保留，请换一个用户名${plain}"
 		return 1
 	fi
 
@@ -282,6 +298,13 @@ EOF
 list_users(){
 	ensure_user_env
 	found=0
+	if [ -f "${CONFIG_PATH}" ]; then
+		bind_to="$(read_config_value "bind-to" "${CONFIG_PATH}")"
+		port_from_cfg="$(echo "${bind_to}" | sed -n -E 's/.*:([0-9]+)$/\1/p' | head -n 1)"
+		status="$(systemctl is-active mtg 2>/dev/null || true)"
+		echo "default  port=${port_from_cfg}  status=${status}"
+		found=1
+	fi
 	for cfg in "${USER_CONFIG_DIR}"/*.toml; do
 		[ -f "${cfg}" ] || continue
 		found=1
@@ -292,7 +315,7 @@ list_users(){
 		echo "${user}  port=${port_from_cfg}  status=${status}"
 	done
 	if [ "${found}" -eq 0 ]; then
-		echo -e "${yellow}暂无用户，请先创建用户${plain}"
+		echo -e "${yellow}暂无用户，请先安装主实例或创建用户${plain}"
 	fi
 }
 
@@ -302,6 +325,10 @@ delete_user(){
 	read -p "输入要删除的用户名: " username
 	if ! validate_username "${username}"; then
 		echo -e "${red}用户名不合法${plain}"
+		return 1
+	fi
+	if is_default_user "${username}"; then
+		echo -e "${red}default 为主实例，不能在这里删除。请用主菜单 2 卸载MTproxy${plain}"
 		return 1
 	fi
 	cfg_file="$(user_config_path)"
@@ -321,7 +348,7 @@ show_user_links(){
 	username="$1"
 	if [ -z "${username}" ]; then
 		echo ""
-		read -p "输入用户名: " username
+		read -p "输入用户名(主实例请输入 default): " username
 	fi
 	if ! validate_username "${username}"; then
 		echo -e "${red}用户名不合法${plain}"
@@ -343,7 +370,7 @@ show_user_links(){
 
 start_user(){
 	echo ""
-	read -p "输入用户名: " username
+	read -p "输入用户名(主实例请输入 default): " username
 	if ! validate_username "${username}"; then
 		echo -e "${red}用户名不合法${plain}"
 		return 1
@@ -355,7 +382,7 @@ start_user(){
 
 stop_user(){
 	echo ""
-	read -p "输入用户名: " username
+	read -p "输入用户名(主实例请输入 default): " username
 	if ! validate_username "${username}"; then
 		echo -e "${red}用户名不合法${plain}"
 		return 1
@@ -367,7 +394,7 @@ stop_user(){
 
 restart_user(){
 	echo ""
-	read -p "输入用户名: " username
+	read -p "输入用户名(主实例请输入 default): " username
 	if ! validate_username "${username}"; then
 		echo -e "${red}用户名不合法${plain}"
 		return 1
@@ -378,7 +405,7 @@ restart_user(){
 
 status_user(){
 	echo ""
-	read -p "输入用户名: " username
+	read -p "输入用户名(主实例请输入 default): " username
 	if ! validate_username "${username}"; then
 		echo -e "${red}用户名不合法${plain}"
 		return 1
