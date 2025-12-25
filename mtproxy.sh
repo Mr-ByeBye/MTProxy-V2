@@ -20,6 +20,7 @@ USER_CONFIG_DIR="/etc/mtg/users"
 USER_SERVICE_TEMPLATE="/etc/systemd/system/mtg-user@.service"
 SCRIPT_INSTALL_PATH="/usr/local/sbin/mtproxy"
 SCRIPT_INSTALL_LINK="/usr/bin/mtproxy"
+SCRIPT_REMOTE_URL="https://raw.githubusercontent.com/Mr-ByeBye/MTProxy-V2/main/mtproxy.sh"
 
 # Define Color
 red='\033[0;31m'
@@ -146,17 +147,33 @@ generate_secret(){
 }
 
 install_quick_command(){
-	script_source="$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")"
-	if [ ! -f "${script_source}" ]; then
-		echo -e "${red}无法定位脚本路径，请用文件路径方式运行脚本后再安装快捷命令${plain}"
-		return 1
-	fi
+	script_source="${BASH_SOURCE[0]:-$0}"
+	script_source="$(readlink -f "${script_source}" 2>/dev/null || realpath "${script_source}" 2>/dev/null || echo "${script_source}")"
 
-	if command -v install >/dev/null 2>&1; then
-		install -m 755 "${script_source}" "${SCRIPT_INSTALL_PATH}"
+	if [ -r "${script_source}" ]; then
+		if command -v install >/dev/null 2>&1; then
+			install -m 755 "${script_source}" "${SCRIPT_INSTALL_PATH}"
+		else
+			cp -f "${script_source}" "${SCRIPT_INSTALL_PATH}"
+			chmod +x "${SCRIPT_INSTALL_PATH}"
+		fi
 	else
-		cp -f "${script_source}" "${SCRIPT_INSTALL_PATH}"
-		chmod +x "${SCRIPT_INSTALL_PATH}"
+		tmp_file="$(mktemp)"
+		if command -v curl >/dev/null 2>&1; then
+			curl -fsSL "${SCRIPT_REMOTE_URL}" -o "${tmp_file}" || rm -f "${tmp_file}"
+		elif command -v wget >/dev/null 2>&1; then
+			wget -qO "${tmp_file}" "${SCRIPT_REMOTE_URL}" || rm -f "${tmp_file}"
+		else
+			rm -f "${tmp_file}"
+			echo -e "${red}未找到 curl/wget，无法下载脚本以安装快捷命令${plain}"
+			return 1
+		fi
+		if [ ! -s "${tmp_file}" ]; then
+			echo -e "${red}下载脚本失败，无法安装快捷命令${plain}"
+			return 1
+		fi
+		chmod +x "${tmp_file}"
+		mv -f "${tmp_file}" "${SCRIPT_INSTALL_PATH}"
 	fi
 
 	if [ ! -e "${SCRIPT_INSTALL_LINK}" ]; then
