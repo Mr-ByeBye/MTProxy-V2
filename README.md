@@ -64,6 +64,8 @@ mtg 设计上只使用单个 secret，因此这里的“多用户”通过“多
 - 删除用户：停止并移除该用户实例
 - 启动/停止/重启/查看状态：按用户名操作对应 systemd 实例
 
+提示：安装脚本创建的“主实例”也会在列表里显示为 `default`，你可以在多用户菜单里用 `default` 查看/输出订阅链接与启停状态。
+
 落地文件与服务：
 
 - 用户配置目录：`/etc/mtg/users/`
@@ -96,4 +98,3 @@ systemctl restart mtg-user@alice
 ## 开源依赖
 
 - [9seconds/mtg](https://github.com/9seconds/mtg)
-
