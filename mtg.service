@@ -1,6 +1,6 @@
 [Unit]
 Description=mtg - MTProto proxy server
-Documentation=https://github.com/bigcaibao/MTProxy-V2
+Documentation=https://github.com/Mr-ByeBye/MTProxy-V2
 After=network.target
 
 [Service]
